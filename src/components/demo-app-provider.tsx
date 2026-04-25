@@ -264,6 +264,7 @@ type DemoAppContextValue = {
   registerWithInvitation: (data: { name: string, email: string, password: string, token: string }) => Promise<void>;
   isSeeded: boolean;
   resetDemo: () => Promise<void>;
+  fetchData: () => Promise<void>;
 };
 
 const DemoAppContext = createContext<DemoAppContextValue | null>(null);
@@ -785,6 +786,7 @@ export function DemoAppProvider({ children }: { children: ReactNode }) {
     resetDemo: async () => {
       fetchData();
     },
+    fetchData,
     updatePlanSection: async () => {},
     markMessageAsRead: async (id) => {
       await supabase.from('messages').update({ status: 'read' }).eq('id', id);
