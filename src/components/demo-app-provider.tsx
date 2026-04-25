@@ -943,7 +943,7 @@ export function DemoAppProvider({ children }: { children: ReactNode }) {
         email,
         password,
         options: {
-          data: { name }
+          data: { name, role: 'dietitian' }
         }
       });
 
