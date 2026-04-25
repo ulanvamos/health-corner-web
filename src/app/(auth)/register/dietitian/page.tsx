@@ -6,7 +6,9 @@ import Link from "next/link";
 import { useDemoApp } from "@/components/demo-app-provider";
 import { supabase } from "@/lib/supabase";
 
-export default function RegisterDietitianPage() {
+import { Suspense } from "react";
+
+function RegisterDietitianContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const token = searchParams.get("token");
@@ -175,5 +177,17 @@ export default function RegisterDietitianPage() {
         </form>
       </div>
     </div>
+  );
+}
+
+export default function RegisterDietitianPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center bg-[#FAF9F6]">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[var(--accent)]"></div>
+      </div>
+    }>
+      <RegisterDietitianContent />
+    </Suspense>
   );
 }
