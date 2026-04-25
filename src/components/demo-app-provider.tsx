@@ -309,13 +309,14 @@ export function DemoAppProvider({ children }: { children: ReactNode }) {
         clientsQuery = clientsQuery.eq('user_id', currentProfile.id);
       }
       const { data: clientsRaw, error: clientsError } = await clientsQuery;
+      const clients = clientsRaw ?? [];
       
-      console.log("DEBUG: clientsRaw count:", clientsRaw?.length ?? 0);
+      console.log("DEBUG: clientsRaw count:", clients.length);
       if (clientsError) console.error("DEBUG: clientsError:", JSON.stringify(clientsError));
 
-      if (clientsRaw && clientsRaw.length > 0) {
+      if (clients.length > 0) {
         // 3. Fetch Related Data Separately
-        const userIds = clientsRaw.map(c => c.user_id);
+        const userIds = clients.map(c => c.user_id);
         
         const { data: usersRaw } = await supabase
           .from('users')
@@ -331,7 +332,7 @@ export function DemoAppProvider({ children }: { children: ReactNode }) {
         console.log("DEBUG: subsRaw total count:", subsRaw?.length ?? 0);
 
         let appointmentsQuery = supabase.from('appointments').select('*');
-        const firstClientId = (clientsRaw && clientsRaw.length > 0) ? clientsRaw[0].id : null;
+        const firstClientId = clients[0]?.id ?? null;
         if (currentProfile.role === 'dietitian') {
           appointmentsQuery = appointmentsQuery.eq('dietitian_user_id', currentProfile.id);
         } else if (currentProfile.role === 'client' && firstClientId) {
@@ -345,7 +346,7 @@ export function DemoAppProvider({ children }: { children: ReactNode }) {
           .select('*')
           .eq('role', 'dietitian');
 
-        const clientIds = clientsRaw.map(c => c.id);
+        const clientIds = clients.map(c => c.id);
         const { data: measurementsRaw } = await supabase
           .from('measurements')
           .select('*')
@@ -364,7 +365,7 @@ export function DemoAppProvider({ children }: { children: ReactNode }) {
             title: "Klinik Beslenme Uzmanı",
             focusSummary: "Beslenme Planı ve Takibi",
           },
-          clients: clientsRaw.map(c => {
+          clients: clients.map(c => {
             const user = usersRaw?.find(u => u.id === c.user_id);
             const sub = subsRaw?.find(s => s.user_id === c.user_id);
             const clientMeasurements = (measurementsRaw || [])
@@ -446,7 +447,7 @@ export function DemoAppProvider({ children }: { children: ReactNode }) {
             id: a.id,
             clientId: a.client_id,
             dietitianId: a.dietitian_user_id,
-            clientName: usersRaw?.find(u => u.id === clientsRaw.find(cl => cl.id === a.client_id)?.user_id)?.name ?? "Bilinmiyor",
+            clientName: usersRaw?.find(u => u.id === clients.find(cl => cl.id === a.client_id)?.user_id)?.name ?? "Bilinmiyor",
             mode: a.mode as any,
             status: a.status as any,
             time_label: a.time_label,
@@ -485,7 +486,7 @@ export function DemoAppProvider({ children }: { children: ReactNode }) {
 
       // 5. Messages and Notifications
       let messagesQuery = supabase.from('messages').select('*');
-      const activeClientId = (clientsRaw && clientsRaw.length > 0) ? clientsRaw[0].id : null;
+      const activeClientId = clients[0]?.id ?? null;
       if (currentProfile.role === 'dietitian') {
         messagesQuery = messagesQuery.eq('dietitian_user_id', currentProfile.id);
       } else if (currentProfile.role === 'client' && activeClientId) {
