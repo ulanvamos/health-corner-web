@@ -8,6 +8,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
+import { usePathname, useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import { type User } from "@supabase/supabase-js";
 
@@ -227,6 +228,7 @@ type DemoAppContextValue = {
   allMessages: WorkspaceMessage[];
   notifications: WorkspaceNotification[];
   isLoading: boolean;
+  authChecked: boolean;
   currentRole: UserRole;
   setRole: (role: UserRole) => void;
   login: (email: string, password: string) => Promise<UserProfile>;
@@ -270,6 +272,8 @@ type DemoAppContextValue = {
 const DemoAppContext = createContext<DemoAppContextValue | null>(null);
 
 export function DemoAppProvider({ children }: { children: ReactNode }) {
+  const pathname = usePathname();
+  const router = useRouter();
   const [user, setUser] = useState<User | null>(null);
   const [currentProfile, setCurrentProfile] = useState<UserProfile | null>(null);
   const [dietitianApplication, setDietitianApplication] =
@@ -279,6 +283,7 @@ export function DemoAppProvider({ children }: { children: ReactNode }) {
   const [dbMessages, setDbMessages] = useState<WorkspaceMessage[]>([]);
   const [dbNotifications, setDbNotifications] = useState<WorkspaceNotification[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [authChecked, setAuthChecked] = useState(false);
 
   // Fetch initial data from Supabase
   const fetchData = async () => {
@@ -549,6 +554,8 @@ export function DemoAppProvider({ children }: { children: ReactNode }) {
         setCurrentProfile(null);
         setDietitianApplication(null);
         setRole("client");
+        setIsLoading(false);
+        setAuthChecked(true);
         return;
       }
 
@@ -556,6 +563,8 @@ export function DemoAppProvider({ children }: { children: ReactNode }) {
       setCurrentProfile(profile);
       setDietitianApplication(buildApplicationFromUser(nextUser));
       setRole(profile.role);
+      setAuthChecked(true);
+      // fetchData will be triggered by useEffect and set isLoading to false
     }
 
     // Check session
@@ -629,6 +638,24 @@ export function DemoAppProvider({ children }: { children: ReactNode }) {
     staff: [],
   };
 
+  // Global Auth Guard Redirect
+  useEffect(() => {
+    if (!authChecked) return;
+    
+    const isDashboardRoute = pathname?.startsWith('/dashboard');
+    const isAuthRoute = pathname === '/login' || pathname === '/onboarding' || pathname === '/register-dietitian' || pathname === '/register-client';
+    const isPublicRoute = pathname === '/' || pathname?.startsWith('/invitation');
+
+    if (isDashboardRoute && !currentProfile) {
+      router.push('/login');
+    }
+    
+    // Redirect to dashboard if logged in and trying to access auth pages
+    if (isAuthRoute && currentProfile) {
+       router.push(`/dashboard/${currentProfile.role}`);
+    }
+  }, [authChecked, currentProfile, pathname, router]);
+
   const dietitianApplications = useMemo(() => {
     return dietitianApplication ? [dietitianApplication] : [];
   }, [dietitianApplication]);
@@ -651,6 +678,7 @@ export function DemoAppProvider({ children }: { children: ReactNode }) {
     allMessages: dbMessages,
     notifications: dbNotifications,
     isLoading,
+    authChecked,
     isSeeded: !!dbState,
     currentRole,
     setRole,

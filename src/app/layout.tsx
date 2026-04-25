@@ -29,6 +29,7 @@ export default function RootLayout({
     <html
       lang="tr"
       className={`${manrope.variable} ${cormorant.variable} h-full antialiased`}
+      suppressHydrationWarning
     >
       <body className="min-h-full bg-[var(--background)] text-[var(--foreground)]">
         <DemoAppProvider>{children}</DemoAppProvider>
