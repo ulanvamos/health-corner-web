@@ -14,18 +14,39 @@ const goals: Array<{ value: GoalType; label: string }> = [
 ];
 
 export default function OnboardingPage() {
-  const { featuredClient, upsertPrimaryClient } = useDemoApp();
-  const [name, setName] = useState(featuredClient.name);
-  const [email, setEmail] = useState(featuredClient.email);
-  const [age, setAge] = useState(String(featuredClient.age));
-  const [heightCm, setHeightCm] = useState(String(featuredClient.heightCm));
-  const [goalType, setGoalType] = useState<GoalType>(featuredClient.goalType);
-  const [allergies, setAllergies] = useState(featuredClient.allergies.join(", "));
+  const { featuredClient, upsertPrimaryClient, isSeeded } = useDemoApp();
+  
+  const [name, setName] = useState(featuredClient?.name || "");
+  const [email, setEmail] = useState(featuredClient?.email || "");
+  const [age, setAge] = useState(String(featuredClient?.age || ""));
+  const [heightCm, setHeightCm] = useState(String(featuredClient?.heightCm || ""));
+  const [goalType, setGoalType] = useState<GoalType>(featuredClient?.goalType || "maintain");
+  const [allergies, setAllergies] = useState(featuredClient?.allergies?.join(", ") || "");
   const [conditions, setConditions] = useState(
-    featuredClient.chronicConditions.join(", "),
+    featuredClient?.chronicConditions?.join(", ") || "",
   );
-  const [targetSummary, setTargetSummary] = useState(featuredClient.targetSummary);
   const [saved, setSaved] = useState(false);
+
+  useEffect(() => {
+    if (featuredClient) {
+      setName(featuredClient.name);
+      setEmail(featuredClient.email);
+      setAge(String(featuredClient.age));
+      setHeightCm(String(featuredClient.heightCm));
+      setGoalType(featuredClient.goalType);
+      setAllergies(featuredClient.allergies.join(", "));
+      setConditions(featuredClient.chronicConditions.join(", "));
+      setTargetSummary(featuredClient.targetSummary);
+    }
+  }, [featuredClient]);
+
+  if (!isSeeded || !featuredClient) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-[#FAF9F6]">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[var(--accent)]"></div>
+      </div>
+    );
+  }
 
   return (
     <main className="min-h-screen bg-[linear-gradient(180deg,#eff7f1_0%,#e3efe7_100%)] px-4 py-6 sm:px-6 lg:px-10">
