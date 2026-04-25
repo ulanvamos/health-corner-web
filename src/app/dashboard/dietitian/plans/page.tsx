@@ -23,7 +23,9 @@ import { PlanEditor } from "../plan-editor";
 import { MenuEditor } from "../menu-editor";
 import { ClientStatistics } from "@/components/client-statistics";
 
-export default function DietitianPlansPage() {
+import { Suspense } from "react";
+
+function DietitianPlansContent() {
   const { state, isSeeded } = useDemoApp();
   const searchParams = useSearchParams();
 
@@ -477,5 +479,17 @@ export default function DietitianPlansPage() {
         </div>
       )}
     </div>
+  );
+}
+
+export default function DietitianPlansPage() {
+  return (
+    <Suspense fallback={
+      <div className="flex items-center justify-center min-h-[60vh] animate-pulse">
+        <div className="text-[var(--muted)] font-bold uppercase tracking-[0.3em]">Sayfa Yükleniyor...</div>
+      </div>
+    }>
+      <DietitianPlansContent />
+    </Suspense>
   );
 }
