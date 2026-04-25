@@ -34,6 +34,7 @@ const navConfig = {
     { href: "/dashboard/dietitian/templates", label: "Diyet Şablonları", icon: FileText },
     { href: "/dashboard/dietitian/appointments", label: "Randevularım", icon: CalendarRange },
     { href: "/dashboard/dietitian/messages", label: "Mesajlar", icon: MessageSquareText },
+    { href: "/dashboard/dietitian/profile", label: "Profilim", icon: UserCircle },
   ],
   client: [
     { href: "/dashboard/client", label: "Genel Bakış", icon: LayoutGrid },

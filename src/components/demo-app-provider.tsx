@@ -299,7 +299,9 @@ export function DemoAppProvider({ children }: { children: ReactNode }) {
       // 2. Fetch Clients (Simple Select)
       let clientsQuery = supabase.from('clients').select('*');
       if (currentProfile.role === 'dietitian') {
-        // Filter logic can be re-enabled here if desired
+        clientsQuery = clientsQuery.eq('dietitian_user_id', currentProfile.id);
+      } else if (currentProfile.role === 'client') {
+        clientsQuery = clientsQuery.eq('user_id', currentProfile.id);
       }
       const { data: clientsRaw, error: clientsError } = await clientsQuery;
       
@@ -323,10 +325,14 @@ export function DemoAppProvider({ children }: { children: ReactNode }) {
         if (subsError) console.error("DEBUG: subsError details:", JSON.stringify(subsError));
         console.log("DEBUG: subsRaw total count:", subsRaw?.length ?? 0);
 
-        const { data: appointmentsData } = await supabase
-          .from('appointments')
-          .select('*')
-          .order('requested_at', { ascending: false });
+        let appointmentsQuery = supabase.from('appointments').select('*');
+        if (currentProfile.role === 'dietitian') {
+          appointmentsQuery = appointmentsQuery.eq('dietitian_user_id', currentProfile.id);
+        } else if (currentProfile.role === 'client') {
+          appointmentsQuery = appointmentsQuery.eq('client_id', clientsRaw[0]?.id);
+        }
+        
+        const { data: appointmentsData } = await appointmentsQuery.order('requested_at', { ascending: false });
 
         const { data: staffRaw } = await supabase
           .from('users')
@@ -472,7 +478,14 @@ export function DemoAppProvider({ children }: { children: ReactNode }) {
       }
 
       // 5. Messages and Notifications
-      const { data: messages } = await supabase.from('messages').select('*').order('sent_at', { ascending: true });
+      let messagesQuery = supabase.from('messages').select('*');
+      if (currentProfile.role === 'dietitian') {
+        messagesQuery = messagesQuery.eq('dietitian_user_id', currentProfile.id);
+      } else if (currentProfile.role === 'client') {
+        messagesQuery = messagesQuery.eq('client_id', clientsRaw[0]?.id);
+      }
+      
+      const { data: messages } = await messagesQuery.order('sent_at', { ascending: true });
       if (messages) {
         setDbMessages(messages.map(m => ({
           id: m.id,
@@ -485,7 +498,14 @@ export function DemoAppProvider({ children }: { children: ReactNode }) {
         })));
       }
 
-      const { data: notificationsData } = await supabase.from('notifications').select('*').order('sent_at', { ascending: false });
+      let notificationsQuery = supabase.from('notifications').select('*');
+      if (currentProfile.role === 'dietitian') {
+        notificationsQuery = notificationsQuery.eq('dietitian_user_id', currentProfile.id);
+      } else if (currentProfile.role === 'client') {
+        notificationsQuery = notificationsQuery.eq('client_id', clientsRaw[0]?.id);
+      }
+
+      const { data: notificationsData } = await notificationsQuery.order('sent_at', { ascending: false });
       if (notificationsData) {
         setDbNotifications(notificationsData.map(n => ({
           id: n.id,

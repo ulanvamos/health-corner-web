@@ -86,7 +86,12 @@ export default function AdminClientsPage() {
                   <td className="px-8 py-6">
                     <div className="flex items-center gap-2">
                        <UserCheck size={14} className="text-[var(--accent)]" />
-                       <span className="text-xs font-bold text-[var(--ink)]">Dyt. Elif Aydın</span>
+                       <span className="text-xs font-bold text-[var(--ink)]">
+                         {(() => {
+                           const dyt = state.staff.find(s => s.id === client.dietitianId);
+                           return dyt ? `Dyt. ${dyt.name}` : "Atanmadı";
+                         })()}
+                       </span>
                     </div>
                   </td>
                   <td className="px-8 py-6">
