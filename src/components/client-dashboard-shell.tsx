@@ -2,13 +2,14 @@
 
 import { useState, type ReactNode } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import {
   LayoutGrid,
   NotebookPen,
   MessageSquareText,
   BarChart3,
   CreditCard,
+  LogOut,
   Bell,
   ArrowLeft,
   RefreshCw
@@ -58,6 +59,7 @@ function isActivePath(currentPath: string, href: string) {
 
 export function ClientDashboardShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
+  const router = useRouter();
   const { featuredClient, notifications, fetchData } = useDemoApp();
   const [isRefreshing, setIsRefreshing] = useState(false);
 
@@ -104,7 +106,7 @@ export function ClientDashboardShell({ children }: { children: ReactNode }) {
               Yenile
            </button>
            <Link href="/login" className="flex items-center gap-3 text-sm font-bold text-red-500 hover:bg-red-50 p-4 rounded-xl transition-colors">
-              <ArrowLeft size={18} /> Çıkış Yap
+              <LogOut size={18} /> Çıkış Yap
            </Link>
         </div>
       </aside>
@@ -112,6 +114,20 @@ export function ClientDashboardShell({ children }: { children: ReactNode }) {
       {/* Mobile Top Header */}
       <div className="lg:hidden sticky top-0 left-0 right-0 h-20 bg-white/80 backdrop-blur-md z-40 border-b border-[rgba(47,44,40,0.04)] px-6 flex items-center justify-between">
         <div className="flex items-center gap-3">
+          {pathname !== "/dashboard/client" && (
+            <button
+              onClick={() => {
+                if (typeof window !== 'undefined' && window.history.length > 1) {
+                  router.back();
+                } else {
+                  router.push("/dashboard/client");
+                }
+              }}
+              className="p-2 -ml-2 text-[var(--soft-ink)]"
+            >
+              <ArrowLeft size={20} />
+            </button>
+          )}
           <div className="w-10 h-10 rounded-full bg-[var(--accent-soft)] flex items-center justify-center font-bold text-[var(--accent)]">
             {featuredClient.name.charAt(0)}
           </div>

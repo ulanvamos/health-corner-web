@@ -331,10 +331,11 @@ export function DemoAppProvider({ children }: { children: ReactNode }) {
         console.log("DEBUG: subsRaw total count:", subsRaw?.length ?? 0);
 
         let appointmentsQuery = supabase.from('appointments').select('*');
+        const firstClientId = (clientsRaw && clientsRaw.length > 0) ? clientsRaw[0].id : null;
         if (currentProfile.role === 'dietitian') {
           appointmentsQuery = appointmentsQuery.eq('dietitian_user_id', currentProfile.id);
-        } else if (currentProfile.role === 'client') {
-          appointmentsQuery = appointmentsQuery.eq('client_id', clientsRaw[0]?.id);
+        } else if (currentProfile.role === 'client' && firstClientId) {
+          appointmentsQuery = appointmentsQuery.eq('client_id', firstClientId);
         }
         
         const { data: appointmentsData } = await appointmentsQuery.order('requested_at', { ascending: false });
@@ -484,10 +485,11 @@ export function DemoAppProvider({ children }: { children: ReactNode }) {
 
       // 5. Messages and Notifications
       let messagesQuery = supabase.from('messages').select('*');
+      const activeClientId = (clientsRaw && clientsRaw.length > 0) ? clientsRaw[0].id : null;
       if (currentProfile.role === 'dietitian') {
         messagesQuery = messagesQuery.eq('dietitian_user_id', currentProfile.id);
-      } else if (currentProfile.role === 'client') {
-        messagesQuery = messagesQuery.eq('client_id', clientsRaw[0]?.id);
+      } else if (currentProfile.role === 'client' && activeClientId) {
+        messagesQuery = messagesQuery.eq('client_id', activeClientId);
       }
       
       const { data: messages } = await messagesQuery.order('sent_at', { ascending: true });
@@ -506,8 +508,8 @@ export function DemoAppProvider({ children }: { children: ReactNode }) {
       let notificationsQuery = supabase.from('notifications').select('*');
       if (currentProfile.role === 'dietitian') {
         notificationsQuery = notificationsQuery.eq('dietitian_user_id', currentProfile.id);
-      } else if (currentProfile.role === 'client') {
-        notificationsQuery = notificationsQuery.eq('client_id', clientsRaw[0]?.id);
+      } else if (currentProfile.role === 'client' && activeClientId) {
+        notificationsQuery = notificationsQuery.eq('client_id', activeClientId);
       }
 
       const { data: notificationsData } = await notificationsQuery.order('sent_at', { ascending: false });

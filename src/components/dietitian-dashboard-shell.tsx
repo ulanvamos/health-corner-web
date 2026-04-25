@@ -169,12 +169,28 @@ export function DietitianDashboardShell({ children }: { children: ReactNode }) {
       {/* Main content */}
       <div className="flex flex-col lg:pl-[280px]">
         <header className="sticky top-0 z-30 flex h-16 items-center justify-between px-6 bg-white/60 backdrop-blur-md border-b border-[rgba(47,44,40,0.08)] lg:h-20 lg:px-12">
-          <button
-            className="lg:hidden"
-            onClick={() => setSidebarOpen(true)}
-          >
-            <Menu size={24} className="text-[var(--ink)]" />
-          </button>
+          <div className="flex items-center gap-4 lg:hidden">
+            <button
+              onClick={() => setSidebarOpen(true)}
+              className="p-2 -ml-2"
+            >
+              <Menu size={24} className="text-[var(--ink)]" />
+            </button>
+            {pathname !== (currentRole === 'admin' ? "/dashboard/admin" : "/dashboard/dietitian") && (
+              <button
+                onClick={() => {
+                  if (typeof window !== 'undefined' && window.history.length > 1) {
+                    router.back();
+                  } else {
+                    router.push(currentRole === 'admin' ? "/dashboard/admin" : "/dashboard/dietitian");
+                  }
+                }}
+                className="p-2 text-[var(--soft-ink)]"
+              >
+                <ArrowLeft size={20} />
+              </button>
+            )}
+          </div>
 
           <div className="hidden lg:block">
              <div className="flex items-center gap-2">
