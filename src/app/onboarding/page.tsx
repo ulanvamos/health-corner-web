@@ -25,6 +25,7 @@ export default function OnboardingPage() {
   const [conditions, setConditions] = useState(
     featuredClient?.chronicConditions?.join(", ") || "",
   );
+  const [targetSummary, setTargetSummary] = useState(featuredClient?.targetSummary || "");
   const [saved, setSaved] = useState(false);
 
   useEffect(() => {
