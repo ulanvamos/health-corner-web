@@ -557,17 +557,25 @@ export function DemoAppProvider({ children }: { children: ReactNode }) {
     if (currentProfile) {
       fetchData();
       
+      console.log("DEBUG: Setting up real-time subscription for profile:", currentProfile.id);
+      
       const channel = supabase
-        .channel('schema-db-changes')
-        .on('postgres_changes', { event: '*', schema: 'public', table: 'messages' }, () => fetchData())
+        .channel(`db-changes-${currentProfile.id}`)
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'messages' }, (payload) => {
+          console.log("DEBUG: Real-time message change detected:", payload);
+          fetchData();
+        })
         .on('postgres_changes', { event: '*', schema: 'public', table: 'notifications' }, () => fetchData())
         .on('postgres_changes', { event: '*', schema: 'public', table: 'clients' }, () => fetchData())
         .on('postgres_changes', { event: '*', schema: 'public', table: 'subscriptions' }, () => fetchData())
         .on('postgres_changes', { event: '*', schema: 'public', table: 'measurements' }, () => fetchData())
         .on('postgres_changes', { event: '*', schema: 'public', table: 'appointments' }, () => fetchData())
-        .subscribe();
+        .subscribe((status) => {
+          console.log("DEBUG: Real-time subscription status:", status);
+        });
 
       return () => {
+        console.log("DEBUG: Cleaning up real-time subscription");
         supabase.removeChannel(channel);
       };
     }
