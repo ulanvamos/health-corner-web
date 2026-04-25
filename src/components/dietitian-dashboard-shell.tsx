@@ -21,6 +21,7 @@ import {
   CreditCard,
   Settings,
   FileText,
+  RefreshCw,
 } from "lucide-react";
 
 import { useDemoApp } from "@/components/demo-app-provider";
@@ -59,7 +60,14 @@ function isActivePath(currentPath: string, href: string) {
 export function DietitianDashboardShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
-  const { state, notifications, currentRole, setRole, logout, user } = useDemoApp();
+  const { state, notifications, currentRole, setRole, logout, user, fetchData } = useDemoApp();
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
+    await fetchData();
+    setTimeout(() => setIsRefreshing(false), 600);
+  };
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   const navigationItems = navConfig[currentRole] || navConfig.dietitian;
@@ -177,6 +185,14 @@ export function DietitianDashboardShell({ children }: { children: ReactNode }) {
           </div>
 
           <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2">
+            <button
+              onClick={handleRefresh}
+              className={`p-2.5 text-[var(--soft-ink)] hover:bg-[rgba(223,240,228,0.4)] transition-all rounded-full ${isRefreshing ? "animate-spin text-[var(--accent)]" : ""}`}
+              title="Sayfayı Yenile"
+            >
+              <RefreshCw size={20} />
+            </button>
             <Link
               href="/dashboard/dietitian/messages"
               className="relative p-2.5 text-[var(--soft-ink)] hover:bg-[rgba(223,240,228,0.4)] transition-colors rounded-full"
@@ -186,6 +202,7 @@ export function DietitianDashboardShell({ children }: { children: ReactNode }) {
                 <span className="absolute top-1 right-1 w-2.5 h-2.5 rounded-full bg-[#b95f33] border-2 border-white" />
               )}
             </Link>
+          </div>
           </div>
         </header>
 

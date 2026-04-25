@@ -10,7 +10,8 @@ import {
   BarChart3,
   CreditCard,
   Bell,
-  ArrowLeft
+  ArrowLeft,
+  RefreshCw
 } from "lucide-react";
 
 import { useDemoApp } from "@/components/demo-app-provider";
@@ -57,7 +58,14 @@ function isActivePath(currentPath: string, href: string) {
 
 export function ClientDashboardShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
-  const { featuredClient, notifications } = useDemoApp();
+  const { featuredClient, notifications, fetchData } = useDemoApp();
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
+    await fetchData();
+    setTimeout(() => setIsRefreshing(false), 600);
+  };
 
   return (
     <main className="min-h-screen bg-[#f8faf9] pb-32 lg:pb-0 lg:pl-72 transition-all duration-500">
@@ -87,7 +95,14 @@ export function ClientDashboardShell({ children }: { children: ReactNode }) {
           })}
         </nav>
 
-        <div className="pt-8 border-t border-[rgba(47,44,40,0.06)]">
+        <div className="pt-8 space-y-2 border-t border-[rgba(47,44,40,0.06)]">
+           <button
+             onClick={handleRefresh}
+             className="flex w-full items-center gap-3 text-sm font-bold text-[var(--muted)] hover:bg-gray-50 p-4 rounded-xl transition-colors"
+           >
+              <RefreshCw size={18} className={isRefreshing ? "animate-spin text-[var(--accent)]" : ""} />
+              Yenile
+           </button>
            <Link href="/login" className="flex items-center gap-3 text-sm font-bold text-red-500 hover:bg-red-50 p-4 rounded-xl transition-colors">
               <ArrowLeft size={18} /> Çıkış Yap
            </Link>
@@ -105,12 +120,20 @@ export function ClientDashboardShell({ children }: { children: ReactNode }) {
             <p className="font-bold text-[var(--ink)] leading-none">{featuredClient.name.split(' ')[0]}</p>
           </div>
         </div>
-        <button className="relative w-10 h-10 rounded-full bg-gray-50 flex items-center justify-center text-[var(--ink)]">
-           <Bell size={20} />
-           {notifications.length > 0 && (
-             <span className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full border-2 border-white" />
-           )}
-        </button>
+        <div className="flex items-center gap-3">
+          <button 
+            onClick={handleRefresh}
+            className="w-10 h-10 rounded-full bg-gray-50 flex items-center justify-center text-[var(--ink)]"
+          >
+            <RefreshCw size={20} className={isRefreshing ? "animate-spin text-[var(--accent)]" : ""} />
+          </button>
+          <button className="relative w-10 h-10 rounded-full bg-gray-50 flex items-center justify-center text-[var(--ink)]">
+             <Bell size={20} />
+             {notifications.length > 0 && (
+               <span className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full border-2 border-white" />
+             )}
+          </button>
+        </div>
       </div>
 
       {/* Main Content Area */}

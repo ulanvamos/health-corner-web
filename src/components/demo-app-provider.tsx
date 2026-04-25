@@ -559,7 +559,7 @@ export function DemoAppProvider({ children }: { children: ReactNode }) {
       
       const channel = supabase
         .channel('schema-db-changes')
-        .on('postgres_changes', { event: '*', schema: 'public', table: 'messages' }, () => fetchMessagesOnly())
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'messages' }, () => fetchData())
         .on('postgres_changes', { event: '*', schema: 'public', table: 'notifications' }, () => fetchData())
         .on('postgres_changes', { event: '*', schema: 'public', table: 'clients' }, () => fetchData())
         .on('postgres_changes', { event: '*', schema: 'public', table: 'subscriptions' }, () => fetchData())
