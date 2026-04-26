@@ -2,7 +2,7 @@ export type GoalType = "lose_weight" | "gain_weight" | "maintain";
 export type SubscriptionPlan = "free" | "basic" | "premium";
 export type SubscriptionStatus = "active" | "canceled" | "expired" | "trial";
 export type AppointmentMode = "online" | "in_person";
-export type AppointmentStatus = "pending" | "approved" | "completed" | "canceled";
+export type AppointmentStatus = "pending" | "approved" | "completed" | "canceled" | "archived";
 
 export type Measurement = {
   id: string;

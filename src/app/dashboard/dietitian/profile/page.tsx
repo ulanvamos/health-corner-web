@@ -56,22 +56,20 @@ export default function DietitianProfilePage() {
     setMessage(null);
 
     try {
-      const { error } = await supabase
-        .from('users')
-        .update({
-          name: formData.name,
-          title: formData.title,
-          bio: formData.bio,
-          avatar_url: formData.avatar_url
-        })
-        .eq('id', currentProfile.id);
+      const { error } = await supabase.rpc("update_own_profile", {
+        profile_name: formData.name,
+        profile_title: formData.title,
+        profile_bio: formData.bio,
+        profile_avatar_url: formData.avatar_url,
+      });
 
       if (error) throw error;
 
       setMessage({ type: 'success', text: 'Profiliniz başarıyla güncellendi.' });
       await fetchData();
-    } catch (err: any) {
-      setMessage({ type: 'error', text: 'Hata: ' + err.message });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Profil güncellenemedi.';
+      setMessage({ type: 'error', text: 'Hata: ' + message });
     } finally {
       setLoading(false);
     }

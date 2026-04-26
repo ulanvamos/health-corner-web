@@ -5,6 +5,7 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from "react";
@@ -19,6 +20,8 @@ import {
   type ClientRecord,
   type DemoState,
   type GoalType,
+  type SubscriptionPlan,
+  type SubscriptionStatus,
 } from "@/lib/demo-data";
 import {
   buildClientWorkspace,
@@ -51,6 +54,38 @@ type DietitianMessageInput = {
   scope?: ReminderScope;
   clientId?: string;
 };
+
+type AppointmentUpdateInput = Partial<{
+  dietitian_user_id: string | null;
+  mode: AppointmentMode;
+  scheduled_at: string | null;
+  preferred_at: string | null;
+  time_label: string;
+  type_label: string;
+  cancellation_reason: string | null;
+}>;
+
+type PlanSectionInput = Omit<PlanSection, "id"> & {
+  id?: string;
+  clientId: string;
+};
+
+type MenuMealUpdateInput = Partial<{
+  name: string;
+  description: string;
+  ingredients: string[];
+  calories: number | null;
+  protein: number | null;
+  carbs: number | null;
+  fat: number | null;
+  nutrient_facts: unknown;
+}>;
+
+type MenuDayUpdateInput = Partial<{
+  label: string;
+  title: string;
+  note: string;
+}>;
 
 export type UserRole = "client" | "dietitian" | "admin";
 export type AccountStatus = "active" | "pending" | "rejected" | "suspended";
@@ -99,7 +134,6 @@ function fallbackRoleForUser(user: User): UserRole {
   const metadataRole = normalizeRole(user.user_metadata?.role);
   if (metadataRole) return metadataRole;
 
-  const email = user.email?.toLowerCase() ?? "";
   return "client";
 }
 
@@ -211,10 +245,6 @@ async function resolveUserProfile(user: User): Promise<UserProfile> {
   };
 }
 
-async function resolveUserRole(user: User): Promise<UserRole> {
-  return (await resolveUserProfile(user)).role;
-}
-
 type DemoAppContextValue = {
   user: User | null;
   currentProfile: UserProfile | null;
@@ -254,10 +284,10 @@ type DemoAppContextValue = {
   updateClientFocus: (clientId: string, targetSummary: string, progressNote: string) => Promise<void>;
   claimClient: (clientId: string) => Promise<void>;
   logout: () => Promise<void>;
-  updateAppointmentStatus: (id: string, status: AppointmentStatus, updates?: any) => Promise<void>;
-  upsertPlanSection: (section: any) => Promise<void>;
-  updateMenuMeal: (mealId: string, updates: any) => Promise<void>;
-  updateMenuDay: (dayId: string, updates: any) => Promise<void>;
+  updateAppointmentStatus: (id: string, status: AppointmentStatus, updates?: AppointmentUpdateInput) => Promise<void>;
+  upsertPlanSection: (section: PlanSectionInput) => Promise<void>;
+  updateMenuMeal: (mealId: string, updates: MenuMealUpdateInput) => Promise<void>;
+  updateMenuDay: (dayId: string, updates: MenuDayUpdateInput) => Promise<void>;
   updateSubscription: (plan: 'free' | 'basic' | 'premium') => Promise<void>;
   createDietitian: (data: { name: string, email: string, password?: string }) => Promise<void>;
   setTemporaryPassword: (userId: string, password: string) => Promise<void>;
@@ -284,86 +314,93 @@ export function DemoAppProvider({ children }: { children: ReactNode }) {
   const [dbNotifications, setDbNotifications] = useState<WorkspaceNotification[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [authChecked, setAuthChecked] = useState(false);
+  const clientsRef = useRef<ClientRecord[]>([]);
+
+  useEffect(() => {
+    clientsRef.current = dbState?.clients ?? [];
+  }, [dbState?.clients]);
 
   // Fetch initial data from Supabase
-  const fetchData = async () => {
-    if (!currentProfile) return;
+  const fetchData = async (profile: UserProfile | null = currentProfile) => {
+    if (!profile) return;
     setIsLoading(true);
     try {
-      console.log("DEBUG: fetchData starting for profile:", currentProfile.id);
-      
-      // 1. Fetch Dietitian User Info
-      const { data: dietitianUser, error: dietitianError } = await supabase
-        .from('users')
-        .select('name, role')
-        .eq('id', currentProfile.id)
-        .maybeSingle();
-
-      if (dietitianError) console.error("DEBUG: dietitianError:", JSON.stringify(dietitianError));
-
-      // 2. Fetch Clients (Simple Select)
+      // 1. Fetch profile and visible clients in parallel.
       let clientsQuery = supabase.from('clients').select('*');
-      if (currentProfile.role === 'dietitian') {
-        clientsQuery = clientsQuery.eq('dietitian_user_id', currentProfile.id);
-      } else if (currentProfile.role === 'client') {
-        clientsQuery = clientsQuery.eq('user_id', currentProfile.id);
+      if (profile.role === 'dietitian') {
+        clientsQuery = clientsQuery.or(`dietitian_user_id.eq.${profile.id},dietitian_user_id.is.null`);
+      } else if (profile.role === 'client') {
+        clientsQuery = clientsQuery.eq('user_id', profile.id);
       }
-      const { data: clientsRaw, error: clientsError } = await clientsQuery;
+
+      const [
+        { data: dietitianUser, error: dietitianError },
+        { data: clientsRaw, error: clientsError },
+      ] = await Promise.all([
+        supabase
+          .from('users')
+          .select('name, role')
+          .eq('id', profile.id)
+          .maybeSingle(),
+        clientsQuery,
+      ]);
+
+      if (dietitianError) console.error("Profile fetch error:", JSON.stringify(dietitianError));
       const clients = clientsRaw ?? [];
       
-      console.log("DEBUG: clientsRaw count:", clients.length);
-      if (clientsError) console.error("DEBUG: clientsError:", JSON.stringify(clientsError));
+      if (clientsError) console.error("Clients fetch error:", JSON.stringify(clientsError));
 
       if (clients.length > 0) {
         // 3. Fetch Related Data Separately
         const userIds = clients.map(c => c.user_id);
         
-        const { data: usersRaw } = await supabase
-          .from('users')
-          .select('id, name, email')
-          .in('id', userIds);
-
-        // Fetch all subscriptions for simplicity to avoid matching issues
-        const { data: subsRaw, error: subsError } = await supabase
-          .from('subscriptions')
-          .select('user_id, plan, status, ends_at');
-        
-        if (subsError) console.error("DEBUG: subsError details:", JSON.stringify(subsError));
-        console.log("DEBUG: subsRaw total count:", subsRaw?.length ?? 0);
-
         let appointmentsQuery = supabase.from('appointments').select('*');
         const firstClientId = clients[0]?.id ?? null;
-        if (currentProfile.role === 'dietitian') {
-          appointmentsQuery = appointmentsQuery.eq('dietitian_user_id', currentProfile.id);
-        } else if (currentProfile.role === 'client' && firstClientId) {
+        if (profile.role === 'dietitian') {
+          appointmentsQuery = appointmentsQuery.or(`dietitian_user_id.eq.${profile.id},dietitian_user_id.is.null`);
+        } else if (profile.role === 'client' && firstClientId) {
           appointmentsQuery = appointmentsQuery.eq('client_id', firstClientId);
         }
-        
-        const { data: appointmentsData } = await appointmentsQuery.order('requested_at', { ascending: false });
-
-        const { data: staffRaw } = await supabase
-          .from('users')
-          .select('*')
-          .eq('role', 'dietitian');
-
         const clientIds = clients.map(c => c.id);
-        const { data: measurementsRaw } = await supabase
-          .from('measurements')
-          .select('*')
-          .in('client_id', clientIds)
-          .order('recorded_at', { ascending: false });
-
-        const { data: anamnesisRaw } = await supabase
-          .from('anamnesis')
-          .select('*')
-          .in('client_id', clientIds);
+        const [
+          { data: usersRaw },
+          { data: subsRaw, error: subsError },
+          { data: appointmentsData },
+          { data: staffRaw },
+          { data: measurementsRaw },
+          { data: anamnesisRaw },
+        ] = await Promise.all([
+          supabase
+            .from('users')
+            .select('id, name, email')
+            .in('id', userIds),
+          supabase
+            .from('subscriptions')
+            .select('user_id, plan, status, ends_at'),
+          appointmentsQuery.order('requested_at', { ascending: false }),
+          supabase
+            .from('users')
+            .select('*')
+            .eq('role', 'dietitian'),
+          supabase
+            .from('measurements')
+            .select('*')
+            .in('client_id', clientIds)
+            .order('recorded_at', { ascending: false }),
+          supabase
+            .from('anamnesis')
+            .select('*')
+            .in('client_id', clientIds),
+        ]);
+        
+        if (subsError) console.error("Subscriptions fetch error:", JSON.stringify(subsError));
 
         // 4. Merge Data in Frontend
         setDbState({
           dietitian: {
-            name: dietitianUser?.name || currentProfile.fullName,
+            name: dietitianUser?.name || profile.fullName,
             title: "Klinik Beslenme Uzmanı",
-            focusSummary: "Beslenme Planı ve Takibi",
+            focusSummary: "Beslenme planı ve takibi",
           },
           clients: clients.map(c => {
             const user = usersRaw?.find(u => u.id === c.user_id);
@@ -419,15 +456,15 @@ export function DemoAppProvider({ children }: { children: ReactNode }) {
               email: user?.email ?? "",
               age: c.age,
               heightCm: c.height_cm,
-              goalType: c.goal_type as any,
+              goalType: c.goal_type as GoalType,
               goalLabel: c.goal_label,
               allergies: c.allergies || [],
               chronicConditions: c.chronic_conditions || [],
               targetSummary: c.target_summary,
               status: c.status,
               subscription: { 
-                plan: (sub?.plan as any) ?? 'free', 
-                status: (sub?.status as any) ?? 'trial', 
+                plan: (sub?.plan as SubscriptionPlan | undefined) ?? 'free', 
+                status: (sub?.status as SubscriptionStatus | undefined) ?? 'trial', 
                 renewal: sub?.ends_at ? new Date(sub.ends_at).toLocaleDateString("tr-TR") : 'Ücretsiz plan' 
               },
               progressPercent: calculatedProgress,
@@ -448,8 +485,8 @@ export function DemoAppProvider({ children }: { children: ReactNode }) {
             clientId: a.client_id,
             dietitianId: a.dietitian_user_id,
             clientName: usersRaw?.find(u => u.id === clients.find(cl => cl.id === a.client_id)?.user_id)?.name ?? "Bilinmiyor",
-            mode: a.mode as any,
-            status: a.status as any,
+            mode: a.mode as AppointmentMode,
+            status: a.status as AppointmentStatus,
             time_label: a.time_label,
             type_label: a.type_label,
             requested_at: a.requested_at,
@@ -468,9 +505,9 @@ export function DemoAppProvider({ children }: { children: ReactNode }) {
         // Handle empty clients state
         setDbState({
           dietitian: {
-            name: dietitianUser?.name || currentProfile.fullName,
+            name: dietitianUser?.name || profile.fullName,
             title: "Klinik Beslenme Uzmanı",
-            focusSummary: "Hazır ve Nazır",
+            focusSummary: "Danışan takibi hazır",
           },
           clients: [],
           appointments: [],
@@ -487,13 +524,32 @@ export function DemoAppProvider({ children }: { children: ReactNode }) {
       // 5. Messages and Notifications
       let messagesQuery = supabase.from('messages').select('*');
       const activeClientId = clients[0]?.id ?? null;
-      if (currentProfile.role === 'dietitian') {
-        messagesQuery = messagesQuery.eq('dietitian_user_id', currentProfile.id);
-      } else if (currentProfile.role === 'client' && activeClientId) {
+      if (profile.role === 'client' && !activeClientId) {
+        setDbMessages([]);
+        setDbNotifications([]);
+        return;
+      }
+
+      if (profile.role === 'dietitian') {
+        messagesQuery = messagesQuery.eq('dietitian_user_id', profile.id);
+      } else if (profile.role === 'client' && activeClientId) {
         messagesQuery = messagesQuery.eq('client_id', activeClientId);
       }
       
-      const { data: messages } = await messagesQuery.order('sent_at', { ascending: true });
+      let notificationsQuery = supabase.from('notifications').select('*');
+      if (profile.role === 'dietitian') {
+        notificationsQuery = notificationsQuery.eq('dietitian_user_id', profile.id);
+      } else if (profile.role === 'client' && activeClientId) {
+        notificationsQuery = notificationsQuery.eq('client_id', activeClientId);
+      }
+
+      const [
+        { data: messages },
+        { data: notificationsData },
+      ] = await Promise.all([
+        messagesQuery.order('sent_at', { ascending: true }),
+        notificationsQuery.order('sent_at', { ascending: false }),
+      ]);
       if (messages) {
         setDbMessages(messages.map(m => ({
           id: m.id,
@@ -506,22 +562,14 @@ export function DemoAppProvider({ children }: { children: ReactNode }) {
         })));
       }
 
-      let notificationsQuery = supabase.from('notifications').select('*');
-      if (currentProfile.role === 'dietitian') {
-        notificationsQuery = notificationsQuery.eq('dietitian_user_id', currentProfile.id);
-      } else if (currentProfile.role === 'client' && activeClientId) {
-        notificationsQuery = notificationsQuery.eq('client_id', activeClientId);
-      }
-
-      const { data: notificationsData } = await notificationsQuery.order('sent_at', { ascending: false });
       if (notificationsData) {
         setDbNotifications(notificationsData.map(n => ({
           id: n.id,
           title: n.title,
           body: n.body,
           sentAt: new Date(n.sent_at).toLocaleString("tr-TR", { hour: "2-digit", minute: "2-digit" }),
-          kind: n.kind as any,
-          scope: n.scope as any,
+          kind: n.kind as WorkspaceNotification["kind"],
+          scope: n.scope as ReminderScope,
         })));
       }
     } catch (err) {
@@ -531,9 +579,26 @@ export function DemoAppProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const fetchMessagesOnly = async () => {
+  const fetchMessagesOnly = async (
+    profile: UserProfile | null = currentProfile,
+    clients: ClientRecord[] = clientsRef.current,
+  ) => {
+    if (!profile) return;
     try {
-      const { data: messages } = await supabase.from('messages').select('*').order('sent_at', { ascending: true });
+      let messagesQuery = supabase.from('messages').select('*');
+      const activeClientId = clients[0]?.id ?? null;
+
+      if (profile.role === 'dietitian') {
+        messagesQuery = messagesQuery.eq('dietitian_user_id', profile.id);
+      } else if (profile.role === 'client') {
+        if (!activeClientId) {
+          setDbMessages([]);
+          return;
+        }
+        messagesQuery = messagesQuery.eq('client_id', activeClientId);
+      }
+
+      const { data: messages } = await messagesQuery.order('sent_at', { ascending: true });
       if (messages) {
         setDbMessages(messages.map(m => ({
           id: m.id,
@@ -587,27 +652,23 @@ export function DemoAppProvider({ children }: { children: ReactNode }) {
   // Fetch data whenever currentProfile is loaded or changed
   useEffect(() => {
     if (currentProfile) {
-      fetchData();
-      
-      console.log("DEBUG: Setting up real-time subscription for profile:", currentProfile.id);
+      queueMicrotask(() => {
+        void fetchData(currentProfile);
+      });
       
       const channel = supabase
         .channel(`db-changes-${currentProfile.id}`)
-        .on('postgres_changes', { event: '*', schema: 'public', table: 'messages' }, (payload) => {
-          console.log("DEBUG: Real-time message change detected:", payload);
-          fetchData();
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'messages' }, () => {
+          fetchMessagesOnly(currentProfile, clientsRef.current);
         })
-        .on('postgres_changes', { event: '*', schema: 'public', table: 'notifications' }, () => fetchData())
-        .on('postgres_changes', { event: '*', schema: 'public', table: 'clients' }, () => fetchData())
-        .on('postgres_changes', { event: '*', schema: 'public', table: 'subscriptions' }, () => fetchData())
-        .on('postgres_changes', { event: '*', schema: 'public', table: 'measurements' }, () => fetchData())
-        .on('postgres_changes', { event: '*', schema: 'public', table: 'appointments' }, () => fetchData())
-        .subscribe((status) => {
-          console.log("DEBUG: Real-time subscription status:", status);
-        });
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'notifications' }, () => fetchData(currentProfile))
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'clients' }, () => fetchData(currentProfile))
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'subscriptions' }, () => fetchData(currentProfile))
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'measurements' }, () => fetchData(currentProfile))
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'appointments' }, () => fetchData(currentProfile))
+        .subscribe();
 
       return () => {
-        console.log("DEBUG: Cleaning up real-time subscription");
         supabase.removeChannel(channel);
       };
     }
@@ -627,19 +688,7 @@ export function DemoAppProvider({ children }: { children: ReactNode }) {
       state.clients[0] ??
       null
     );
-  }, [currentClient, state.clients]);
-
-  // Use the seed directly if not loaded
-  const baseSeed = {
-    dietitian: {
-      name: "Dyt. Yükleniyor...",
-      title: "Klinik Beslenme Uzmanı",
-      focusSummary: "Veriler yüklenirken lütfen bekleyin.",
-    },
-    clients: [],
-    appointments: [],
-    staff: [],
-  };
+  }, [state.clients]);
 
   // Global Auth Guard Redirect
   useEffect(() => {
@@ -647,8 +696,6 @@ export function DemoAppProvider({ children }: { children: ReactNode }) {
     
     const isDashboardRoute = pathname?.startsWith('/dashboard');
     const isAuthRoute = pathname === '/login' || pathname === '/onboarding' || pathname === '/register-dietitian' || pathname === '/register-client';
-    const isPublicRoute = pathname === '/' || pathname?.startsWith('/invitation');
-
     if (isDashboardRoute && !currentProfile) {
       router.push('/login');
     }
@@ -695,7 +742,7 @@ export function DemoAppProvider({ children }: { children: ReactNode }) {
       setCurrentProfile(profile);
       setDietitianApplication(buildApplicationFromUser(data.user));
       setRole(profile.role);
-      await fetchData();
+      await fetchData(profile);
       return profile;
     },
     register: async (email, password, name) => {
@@ -718,7 +765,7 @@ export function DemoAppProvider({ children }: { children: ReactNode }) {
         setCurrentProfile(profile);
         setDietitianApplication(null);
         setRole("client");
-        await fetchData();
+        await fetchData(profile);
         return profile;
       }
       throw new Error("Hesap oluşturulamadı.");
@@ -743,7 +790,7 @@ export function DemoAppProvider({ children }: { children: ReactNode }) {
         setCurrentProfile(profile);
         setDietitianApplication(null);
         setRole("client");
-        await fetchData();
+        await fetchData(profile);
         return profile;
       }
       throw new Error("Hesap oluşturulamadı.");
@@ -772,7 +819,7 @@ export function DemoAppProvider({ children }: { children: ReactNode }) {
         setCurrentProfile(profile);
         setDietitianApplication(buildApplicationFromUser(data.user));
         setRole("dietitian");
-        await fetchData();
+        await fetchData(profile);
         return profile;
       }
       throw new Error("Başvuru hesabı oluşturulamadı.");
@@ -885,11 +932,20 @@ export function DemoAppProvider({ children }: { children: ReactNode }) {
     },
     updateAppointmentStatus: async (id, status, updates = {}) => {
       console.log(`DEBUG: updateAppointmentStatus called for ID: ${id}, status: ${status}`, updates);
-      const { error } = await supabase.from('appointments').update({ status, ...updates }).eq('id', id);
+      const { data, error } = await supabase
+        .from('appointments')
+        .update({ status, ...updates })
+        .eq('id', id)
+        .select('id')
+        .maybeSingle();
       if (error) {
         console.error("DEBUG: updateAppointmentStatus error:", error.message);
         console.error("DEBUG: error details:", error.details);
         console.error("DEBUG: error hint:", error.hint);
+        throw error;
+      }
+      if (!data) {
+        throw new Error("Randevu güncellenemedi. Talep başka bir diyetisyen tarafından alınmış veya yetkiniz kalmamış olabilir.");
       }
       await fetchData();
     },
@@ -933,7 +989,8 @@ export function DemoAppProvider({ children }: { children: ReactNode }) {
       fetchData();
     },
     updateSubscription: async (plan) => {
-      await supabase.from('subscriptions').update({ plan }).eq('id', user?.id);
+      if (!user) return;
+      await supabase.from('subscriptions').update({ plan }).eq('user_id', user.id);
       fetchData();
     },
     createDietitian: async (data) => {
@@ -973,9 +1030,10 @@ export function DemoAppProvider({ children }: { children: ReactNode }) {
       const { error } = await supabase.auth.updateUser({ password });
       if (error) throw error;
       
-      // Also clear the temp_password in public.users if it exists
+      // Public users is admin-only for direct updates; use the narrow RPC for this field.
       if (user) {
-        await supabase.from('users').update({ temp_password: null }).eq('id', user.id);
+        const { error: clearError } = await supabase.rpc('clear_own_temp_password');
+        if (clearError) throw clearError;
       }
     },
     createInvitation: async () => {
@@ -1015,17 +1073,17 @@ export function DemoAppProvider({ children }: { children: ReactNode }) {
           id: authData.user.id,
           name,
           email,
-          role: 'dietitian' as any,
+          role: 'dietitian',
           is_active: true
         });
       
       if (userError) throw userError;
 
       // 4. Token'ı kullanıldı olarak işaretle
-      await supabase
-        .from('invitations')
-        .update({ is_used: true })
-        .eq('token', token);
+      const { error: markError } = await supabase.rpc('mark_dietitian_invitation_used', {
+        invitation_token: token,
+      });
+      if (markError) throw markError;
       
       await fetchData();
     },

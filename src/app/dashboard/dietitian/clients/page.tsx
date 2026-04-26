@@ -52,7 +52,7 @@ export default function DietitianClientsPage() {
       // Danışanın bu diyetisyenle olan tamamlanmış randevularını 'archived' yap ki aday listesinden düşsün
       const clientApps = state.appointments.filter(a => a.clientId === clientId && a.status === 'completed');
       for (const app of clientApps) {
-        await updateAppointmentStatus(app.id, 'archived' as any);
+        await updateAppointmentStatus(app.id, 'archived');
       }
     } catch (err) {
       console.error("Reject failed:", err);
@@ -188,4 +188,3 @@ export default function DietitianClientsPage() {
     </div>
   );
 }
-

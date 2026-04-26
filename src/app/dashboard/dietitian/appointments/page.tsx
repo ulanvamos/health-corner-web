@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { CalendarRange, Check, X, Clock, Calendar } from "lucide-react";
 import { useDemoApp } from "@/components/demo-app-provider";
+import type { AppointmentMode } from "@/lib/demo-data";
 
 export default function DietitianAppointmentsPage() {
   const { state, updateAppointmentStatus, currentProfile } = useDemoApp();
@@ -30,7 +31,13 @@ export default function DietitianAppointmentsPage() {
     try {
       const date = selectedDates[`${id}_date`];
       const time = selectedDates[`${id}_time`];
-      const updates: any = { mode };
+      const updates: {
+        mode: AppointmentMode;
+        scheduled_at?: string;
+        time_label?: string;
+        dietitian_user_id?: string;
+        cancellation_reason?: string;
+      } = { mode: mode as AppointmentMode };
       
       if (status === 'approved') {
         if (!date || !time) {
