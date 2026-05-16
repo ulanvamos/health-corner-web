@@ -70,6 +70,17 @@ export default function DietitianMessagesPage() {
     setDraft("");
   }
 
+  async function handleNudge(type: "water" | "meal" | "measurement") {
+    let body = "";
+    if (type === "water") body = "💧 Lütfen gün içinde yeterli su içmeyi unutmayın.";
+    if (type === "meal") body = "🥗 Öğün zamanınız yaklaştı, lütfen planınıza uyun.";
+    if (type === "measurement") body = "📏 Lütfen güncel ölçümlerinizi sisteme girer misiniz?";
+    
+    // Hem bildirim gönder hem de sohbete mesaj olarak düşsün
+    await sendReminder(type, "client", 0);
+    await sendDietitianMessage({ body, scope: "client", clientId: selectedClientId });
+  }
+
   return (
     <div className="flex flex-col h-[calc(100vh-140px)] -m-6 sm:-m-10 lg:-m-12 overflow-hidden">
       <div className="flex flex-1 overflow-hidden">
@@ -155,19 +166,19 @@ export default function DietitianMessagesPage() {
           <div className="flex items-center gap-3 px-6 py-2 border-b border-[rgba(47,44,40,0.04)] bg-[rgba(223,240,228,0.1)] overflow-x-auto no-scrollbar">
             <span className="text-[10px] uppercase tracking-widest text-[var(--muted)] font-bold whitespace-nowrap">Dürtmeler:</span>
             <button
-              onClick={() => sendReminder("water", "client", 0)}
+              onClick={() => handleNudge("water")}
               className="px-3 py-1.5 bg-white border border-[rgba(47,44,40,0.08)] text-[11px] font-bold text-[var(--ink)] hover:border-[var(--accent)] hover:text-[var(--accent)] transition-all whitespace-nowrap"
             >
               💧 Su Hatırlat
             </button>
             <button
-              onClick={() => sendReminder("meal", "client", 0)}
+              onClick={() => handleNudge("meal")}
               className="px-3 py-1.5 bg-white border border-[rgba(47,44,40,0.08)] text-[11px] font-bold text-[var(--ink)] hover:border-[var(--accent)] hover:text-[var(--accent)] transition-all whitespace-nowrap"
             >
               🥗 Öğün Zamanı
             </button>
             <button
-              onClick={() => sendReminder("measurement", "client", 0)}
+              onClick={() => handleNudge("measurement")}
               className="px-3 py-1.5 bg-white border border-[rgba(47,44,40,0.08)] text-[11px] font-bold text-[var(--ink)] hover:border-[var(--accent)] hover:text-[var(--accent)] transition-all whitespace-nowrap"
             >
               📏 Ölçüm İste
