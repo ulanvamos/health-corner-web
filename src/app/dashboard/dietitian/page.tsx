@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useState } from "react";
 import {
   CalendarRange,
   MessageSquareText,
@@ -19,6 +20,7 @@ import { useDemoApp } from "@/components/demo-app-provider";
 
 export default function DietitianHomePage() {
   const { state, messages, isSeeded } = useDemoApp();
+  const [searchQuery, setSearchQuery] = useState("");
 
   if (!isSeeded || !state.dietitian) {
     return (
@@ -59,6 +61,8 @@ export default function DietitianHomePage() {
                 type="text" 
                 placeholder="Dosya no veya isim..." 
                 className="pl-10 pr-4 py-2.5 bg-transparent border-b border-[rgba(47,44,40,0.1)] text-sm outline-none focus:border-[var(--accent)] transition-all w-64"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
               />
            </div>
            <button className="bg-[var(--accent)] text-white p-3 rounded-full shadow-lg shadow-[var(--accent)]/20 hover:scale-105 transition-all">
@@ -138,7 +142,16 @@ export default function DietitianHomePage() {
                       </tr>
                    </thead>
                    <tbody className="divide-y divide-[rgba(47,44,40,0.04)]">
-                      {state.clients.map((client) => (
+                      {state.clients
+                         .filter((client) => {
+                            if (!searchQuery.trim()) return true;
+                            const query = searchQuery.toLowerCase();
+                            return (
+                               client.name.toLowerCase().includes(query) ||
+                               client.email.toLowerCase().includes(query)
+                            );
+                         })
+                         .map((client) => (
                          <tr key={client.id} className="group hover:bg-[rgba(47,44,40,0.01)] transition-colors">
                             <td className="py-6 pr-4">
                                <div className="flex items-center gap-4">
@@ -173,8 +186,12 @@ export default function DietitianHomePage() {
                             </td>
                          </tr>
                       ))}
-                      {state.clients.length === 0 && (
-                         <tr><td colSpan={4} className="py-12 text-center text-[var(--muted)] italic text-sm">Kliniğe atanmış danışan bulunmuyor.</td></tr>
+                      {state.clients.filter((client) => {
+                         if (!searchQuery.trim()) return true;
+                         const query = searchQuery.toLowerCase();
+                         return client.name.toLowerCase().includes(query) || client.email.toLowerCase().includes(query);
+                      }).length === 0 && (
+                         <tr><td colSpan={4} className="py-12 text-center text-[var(--muted)] italic text-sm">Arama kriterlerine uygun danışan bulunamadı.</td></tr>
                       )}
                    </tbody>
                 </table>
