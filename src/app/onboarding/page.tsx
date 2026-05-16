@@ -26,6 +26,7 @@ export default function OnboardingPage() {
     featuredClient?.chronicConditions?.join(", ") || "",
   );
   const [targetSummary, setTargetSummary] = useState(featuredClient?.targetSummary || "");
+  const [targetWeight, setTargetWeight] = useState(featuredClient?.anamnesis?.target_weight ? String(featuredClient.anamnesis.target_weight) : "");
   const [saved, setSaved] = useState(false);
 
   useEffect(() => {
@@ -38,6 +39,7 @@ export default function OnboardingPage() {
       setAllergies(featuredClient.allergies.join(", "));
       setConditions(featuredClient.chronicConditions.join(", "));
       setTargetSummary(featuredClient.targetSummary);
+      setTargetWeight(featuredClient.anamnesis?.target_weight ? String(featuredClient.anamnesis.target_weight) : "");
     }
   }, [featuredClient]);
 
@@ -121,6 +123,18 @@ export default function OnboardingPage() {
                   onChange={(event) => setHeightCm(event.target.value)}
                 />
               </label>
+
+              <label className="space-y-2">
+                <span className="text-sm font-semibold text-[var(--ink)]">
+                  Hedef Kilo (kg)
+                </span>
+                <input
+                  type="number"
+                  className="w-full rounded-2xl border border-[rgba(47,44,40,0.1)] bg-white px-4 py-3 outline-none transition focus:border-[var(--accent)]"
+                  value={targetWeight}
+                  onChange={(event) => setTargetWeight(event.target.value)}
+                />
+              </label>
             </div>
 
             <div className="mt-6 space-y-3">
@@ -202,6 +216,7 @@ export default function OnboardingPage() {
                       .map((item) => item.trim())
                       .filter(Boolean),
                     targetSummary,
+                    targetWeight: targetWeight ? Number(targetWeight) : undefined,
                   });
                   setSaved(true);
                 }}

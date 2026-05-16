@@ -96,11 +96,16 @@ export default function ClientDetailPage() {
         <div className="lg:col-span-2 space-y-16">
           
           {/* Quick Stats Grid */}
-          <section className="grid grid-cols-2 md:grid-cols-4 gap-6">
+          <section className="grid grid-cols-2 md:grid-cols-5 gap-4 lg:gap-6">
              <div className="p-6 bg-white border border-[rgba(47,44,40,0.06)] rounded-3xl">
                 <Scale size={18} className="text-[var(--accent)] mb-4" />
                 <p className="text-2xl font-bold text-[var(--ink)]">{measurements[0]?.weight_kg || "-"} <span className="text-xs font-normal text-[var(--muted)]">kg</span></p>
                 <p className="text-[10px] font-bold text-[var(--muted)] uppercase tracking-widest mt-1">Güncel Kilo</p>
+             </div>
+             <div className="p-6 bg-white border border-[rgba(47,44,40,0.06)] rounded-3xl">
+                <Activity size={18} className="text-purple-600 mb-4" />
+                <p className="text-2xl font-bold text-[var(--ink)]">{anamnesis?.target_weight || "-"} <span className="text-xs font-normal text-[var(--muted)]">kg</span></p>
+                <p className="text-[10px] font-bold text-[var(--muted)] uppercase tracking-widest mt-1">Hedef Kilo</p>
              </div>
              <div className="p-6 bg-white border border-[rgba(47,44,40,0.06)] rounded-3xl">
                 <TrendingUp size={18} className="text-blue-600 mb-4" />
@@ -128,39 +133,42 @@ export default function ClientDetailPage() {
              
              {isLoadingData ? (
                <div className="h-40 bg-gray-50 rounded-3xl animate-pulse" />
-             ) : anamnesis ? (
+             ) : (
                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                   <div className="space-y-6">
                      <div>
                         <p className="text-[10px] font-bold text-[var(--muted)] uppercase tracking-widest mb-1.5">Bilinen Hastalıklar</p>
-                        <p className="text-sm text-[var(--ink)] font-medium bg-gray-50/50 p-4 rounded-2xl border border-[rgba(47,44,40,0.04)]">{anamnesis.diseases || "Kayıt yok"}</p>
+                        <p className="text-sm text-[var(--ink)] font-medium bg-gray-50/50 p-4 rounded-2xl border border-[rgba(47,44,40,0.04)]">
+                          {client.chronicConditions && client.chronicConditions.length > 0 
+                            ? client.chronicConditions.join(', ') 
+                            : (anamnesis?.diseases || "Kayıt yok")}
+                        </p>
                      </div>
                      <div>
                         <p className="text-[10px] font-bold text-[var(--muted)] uppercase tracking-widest mb-1.5">Alerjiler</p>
-                        <p className="text-sm text-[var(--ink)] font-medium bg-red-50/30 p-4 rounded-2xl border border-red-100/50">{anamnesis.allergies || "Alerji bildirilmedi"}</p>
+                        <p className="text-sm text-[var(--ink)] font-medium bg-red-50/30 p-4 rounded-2xl border border-red-100/50">
+                          {client.allergies && client.allergies.length > 0 
+                            ? client.allergies.join(', ') 
+                            : (anamnesis?.allergies || "Alerji bildirilmedi")}
+                        </p>
                      </div>
                   </div>
                   <div className="space-y-6">
                      <div className="grid grid-cols-2 gap-4">
                         <div className="p-4 bg-gray-50/50 rounded-2xl border border-[rgba(47,44,40,0.04)]">
                            <p className="text-[9px] font-bold text-[var(--muted)] uppercase tracking-widest mb-1">Uyku</p>
-                           <p className="text-sm font-bold text-[var(--ink)]">{anamnesis.sleep_hours} Saat</p>
+                           <p className="text-sm font-bold text-[var(--ink)]">{anamnesis?.sleep_hours ? `${anamnesis.sleep_hours} Saat` : "Kayıt Yok"}</p>
                         </div>
                         <div className="p-4 bg-gray-50/50 rounded-2xl border border-[rgba(47,44,40,0.04)]">
                            <p className="text-[9px] font-bold text-[var(--muted)] uppercase tracking-widest mb-1">Öğün</p>
-                           <p className="text-sm font-bold text-[var(--ink)]">{anamnesis.daily_meals} Sefer</p>
+                           <p className="text-sm font-bold text-[var(--ink)]">{anamnesis?.daily_meals ? `${anamnesis.daily_meals} Sefer` : "Kayıt Yok"}</p>
                         </div>
                      </div>
                      <div>
                         <p className="text-[10px] font-bold text-[var(--muted)] uppercase tracking-widest mb-1.5">Hedef Motivasyonu</p>
-                        <p className="text-sm text-[var(--ink)] font-medium italic opacity-80">"{anamnesis.motivation_reason || "Girilmemiş"}"</p>
+                        <p className="text-sm text-[var(--ink)] font-medium italic opacity-80">"{anamnesis?.motivation_reason || client.targetSummary || "Girilmemiş"}"</p>
                      </div>
                   </div>
-               </div>
-             ) : (
-               <div className="p-12 text-center bg-gray-50 rounded-3xl border border-dashed border-gray-200">
-                  <AlertCircle size={24} className="mx-auto text-[var(--muted)] mb-3" />
-                  <p className="text-sm text-[var(--muted)] font-medium">Danışan henüz anamnez formunu doldurmamış.</p>
                </div>
              )}
           </section>

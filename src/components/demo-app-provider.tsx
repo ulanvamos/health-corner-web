@@ -42,6 +42,7 @@ type OnboardingInput = {
   allergies: string[];
   chronicConditions: string[];
   targetSummary: string;
+  targetWeight?: number;
 };
 
 type MeasurementSaveResult = {
@@ -832,7 +833,45 @@ export function DemoAppProvider({ children }: { children: ReactNode }) {
        setRole("client");
     },
     upsertPrimaryClient: async (input) => {
-      console.log("Upsert client:", input);
+      if (!currentProfile) return;
+      
+      const { data: clientData, error: clientError } = await supabase
+        .from('clients')
+        .update({
+          age: input.age,
+          height_cm: input.heightCm,
+          goal_type: input.goalType,
+          allergies: input.allergies,
+          chronic_conditions: input.chronicConditions,
+          target_summary: input.targetSummary
+        })
+        .eq('user_id', currentProfile.id)
+        .select()
+        .single();
+        
+      if (clientError) {
+        console.error("Error updating client:", clientError);
+        return;
+      }
+      
+      if (clientData) {
+        const { error: anamnesisError } = await supabase
+          .from('anamnesis')
+          .upsert({
+            client_id: clientData.id,
+            age: input.age,
+            height_cm: input.heightCm,
+            target_weight: input.targetWeight,
+            allergies: input.allergies.join(", "),
+            diseases: input.chronicConditions.join(", "),
+            goal_type: input.goalType
+          }, { onConflict: 'client_id' });
+          
+        if (anamnesisError) {
+          console.error("Error updating anamnesis:", anamnesisError);
+        }
+      }
+      fetchData();
     },
     activatePremium: async () => {
       console.log("Activate premium");

@@ -196,19 +196,37 @@ export default function DietitianHomePage() {
                  <Link href="/dashboard/dietitian/appointments" className="text-[10px] font-bold text-amber-600 uppercase">Tümü</Link>
               </div>
               <div className="space-y-8">
-                 {state.appointments.map((item) => (
+                 {[...state.appointments]
+                    .filter((a) => {
+                       if (!a.preferred_at) return true;
+                       const appDate = new Date(a.preferred_at);
+                       const today = new Date();
+                       today.setHours(0, 0, 0, 0);
+                       return appDate >= today;
+                    })
+                    .sort((a, b) => {
+                       // Önce tarihe göre, sonra saate göre sırala
+                       const dateA = a.preferred_at ? new Date(a.preferred_at).getTime() : 0;
+                       const dateB = b.preferred_at ? new Date(b.preferred_at).getTime() : 0;
+                       if (dateA !== dateB) return dateA - dateB;
+                       return (a.time_label || '00:00').localeCompare(b.time_label || '00:00');
+                    })
+                    .map((item) => (
                     <div key={item.id} className="flex items-center gap-4 group">
                        <div className="w-10 h-10 border border-[rgba(47,44,40,0.06)] rounded-full flex items-center justify-center text-[var(--ink)] shrink-0 group-hover:bg-[var(--ink)] group-hover:text-white transition-all">
                           <p className="font-bold text-[10px] tracking-tighter">{item.time_label || '00:00'}</p>
                        </div>
                        <div className="flex-1 min-w-0">
                           <p className="font-bold text-[var(--ink)] text-sm truncate">{item.clientName}</p>
-                          <p className="text-[10px] text-[var(--muted)] font-bold uppercase tracking-widest truncate">{(item.type_label || 'Görüşme').split(' ')[0]} • {item.mode === 'online' ? 'Görüntülü' : 'Klinik'}</p>
+                          <p className="text-[10px] text-[var(--muted)] font-bold uppercase tracking-widest truncate">
+                             {item.preferred_at ? new Date(item.preferred_at).toLocaleDateString('tr-TR', { day: 'numeric', month: 'short' }) + " • " : ""}
+                             {(item.type_label || 'Görüşme').split(' ')[0]} • {item.mode === 'online' ? 'Görüntülü' : 'Klinik'}
+                          </p>
                        </div>
                     </div>
                  ))}
-                 {state.appointments.length === 0 && (
-                    <p className="text-xs text-[var(--muted)] italic py-4">Sistemde onaylı randevu kaydı yok.</p>
+                 {state.appointments.filter((a) => !a.preferred_at || new Date(a.preferred_at) >= new Date(new Date().setHours(0,0,0,0))).length === 0 && (
+                    <p className="text-xs text-[var(--muted)] italic py-4">Yaklaşan veya onaylanmış randevu bulunmuyor.</p>
                  )}
               </div>
            </section>
