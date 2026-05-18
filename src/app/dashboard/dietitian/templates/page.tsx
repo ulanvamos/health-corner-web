@@ -35,7 +35,7 @@ export default function TemplatesPage() {
         })
         .select()
         .single();
-      
+
       if (error) throw error;
       await loadTemplates();
       handleEditMeal(newMeal);
@@ -107,9 +107,9 @@ export default function TemplatesPage() {
         .from('diet_templates')
         .select('*, days:diet_template_days(*, meals:diet_template_meals(*))')
         .order('created_at', { ascending: false });
-      
+
       if (error) throw error;
-      
+
       // Sort days and meals
       const processedTemplates = (data || []).map(t => ({
         ...t,
@@ -118,7 +118,7 @@ export default function TemplatesPage() {
           meals: (d.meals || []).sort((a: any, b: any) => a.sort_order - b.sort_order)
         }))
       }));
-      
+
       setTemplates(processedTemplates);
     } catch (err) {
       console.error("Load templates error:", err);
@@ -150,7 +150,7 @@ export default function TemplatesPage() {
       }));
 
       await supabase.from('diet_template_days').insert(daysToInsert);
-      
+
       await loadTemplates();
       alert("Şablon başarıyla oluşturuldu.");
     } catch (err) {
@@ -173,11 +173,11 @@ export default function TemplatesPage() {
 
   async function cloneDayToAll(sourceDay: any) {
     if (!confirm(`${sourceDay.label} menüsünü bu şablonun diğer tüm günlerine kopyalamak istediğine emin misin?`)) return;
-    
+
     setSaving(true);
     try {
       const otherDays = selectedTemplate.days.filter((d: any) => d.id !== sourceDay.id);
-      
+
       for (const targetDay of otherDays) {
         await supabase.from('diet_template_meals').delete().eq('day_id', targetDay.id);
         const mealsToClone = sourceDay.meals.map((m: any) => ({
@@ -192,7 +192,7 @@ export default function TemplatesPage() {
           await supabase.from('diet_template_meals').insert(mealsToClone);
         }
       }
-      
+
       await loadTemplates();
       // Update selectedTemplate state locally
       const updated = templates.find(t => t.id === selectedTemplate.id);
@@ -211,10 +211,10 @@ export default function TemplatesPage() {
     <div className="max-w-7xl mx-auto p-8 space-y-12">
       <header className="flex justify-between items-end border-b border-[rgba(47,44,40,0.08)] pb-8">
         <div>
-          <h1 className="text-4xl font-black text-[var(--ink)] tracking-tight mb-2">DIyet Şablonlarım</h1>
+          <h1 className="text-4xl font-black text-[var(--ink)] tracking-tight mb-2">Diyet Şablonlarım</h1>
           <p className="text-[var(--soft-ink)] font-medium">Danışanlarına tek tıkla atayabileceğin hazır diyet programları oluştur.</p>
         </div>
-        <button 
+        <button
           onClick={createTemplate}
           className="bg-[var(--accent)] text-white px-8 py-4 text-xs font-bold uppercase tracking-widest hover:bg-[#24794e] shadow-xl shadow-emerald-100 flex items-center gap-2"
         >
@@ -233,18 +233,17 @@ export default function TemplatesPage() {
             </div>
           ) : (
             templates.map((t) => (
-              <div 
+              <div
                 key={t.id}
                 onClick={() => { setSelectedTemplate(t); setActiveDayIdx(0); }}
-                className={`group p-6 border transition-all cursor-pointer relative ${
-                  selectedTemplate?.id === t.id 
-                    ? "bg-white border-[var(--accent)] shadow-xl" 
+                className={`group p-6 border transition-all cursor-pointer relative ${selectedTemplate?.id === t.id
+                    ? "bg-white border-[var(--accent)] shadow-xl"
                     : "bg-white border-[rgba(47,44,40,0.06)] hover:border-[var(--accent)]/40 shadow-sm"
-                }`}
+                  }`}
               >
                 <div className="flex justify-between items-start mb-2">
                   <h3 className="font-bold text-[var(--ink)] pr-8">{t.name}</h3>
-                  <button 
+                  <button
                     onClick={(e) => { e.stopPropagation(); deleteTemplate(t.id); }}
                     className="p-1.5 text-[var(--muted)] hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all"
                   >
@@ -281,7 +280,7 @@ export default function TemplatesPage() {
                     <span className="text-[10px] font-black text-[var(--accent)] uppercase tracking-[0.3em] mb-1 block">ŞABLON DÜZENLENİYOR</span>
                     <h2 className="text-3xl font-black text-[var(--ink)] tracking-tight">{selectedTemplate.name}</h2>
                   </div>
-                  <button 
+                  <button
                     onClick={() => cloneDayToAll(selectedTemplate.days[activeDayIdx])}
                     className="flex items-center gap-2 px-6 py-3 text-[10px] font-black uppercase tracking-widest text-[var(--accent)] border-2 border-[var(--accent)] hover:bg-emerald-50 transition-all"
                   >
@@ -295,11 +294,10 @@ export default function TemplatesPage() {
                     <button
                       key={day.id}
                       onClick={() => { setActiveDayIdx(idx); setEditingMealId(null); }}
-                      className={`px-6 py-4 text-xs font-black whitespace-nowrap transition-all border-b-2 uppercase tracking-widest ${
-                        activeDayIdx === idx 
-                          ? "border-[var(--accent)] text-[var(--accent)] bg-emerald-50/50" 
+                      className={`px-6 py-4 text-xs font-black whitespace-nowrap transition-all border-b-2 uppercase tracking-widest ${activeDayIdx === idx
+                          ? "border-[var(--accent)] text-[var(--accent)] bg-emerald-50/50"
                           : "border-transparent text-[var(--muted)] hover:text-[var(--ink)]"
-                      }`}
+                        }`}
                     >
                       {day.label}
                     </button>
@@ -354,8 +352,8 @@ export default function TemplatesPage() {
                       )}
                     </div>
                   ))}
-                  
-                  <button 
+
+                  <button
                     onClick={handleAddMeal}
                     className="w-full py-5 border-2 border-dashed border-[rgba(47,44,40,0.1)] text-[var(--muted)] hover:text-[var(--accent)] hover:border-[var(--accent)] hover:bg-emerald-50/30 transition-all flex items-center justify-center gap-3 text-xs font-black uppercase tracking-[0.2em]"
                   >
